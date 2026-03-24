@@ -1,0 +1,10 @@
+# Copie este arquivo para local.properties e preencha os valores reais
+# NUNCA versione local.properties no git
+
+sdk.dir=/path/to/Android/Sdk
+
+# Chave HMAC para validação do QR de cadastro (deve ser igual ao backend Odin)
+HUGINN_QR_HMAC_KEY=seu_segredo_aqui
+
+# Chave HMAC para assinatura dos tokens QR dinâmicos (deve ser igual ao backend Heimdall)
+HUGINN_TOKEN_HMAC_KEY=seu_segredo_aqui
