@@ -113,11 +113,12 @@ private fun generateQrBitmap(content: String, pixelSize: Int): Bitmap {
     val bgColor = AndroidColor.parseColor("#16213E")  // DarkSurface
     val fgColor = AndroidColor.WHITE
 
-    val bitmap = Bitmap.createBitmap(pixelSize, pixelSize, Bitmap.Config.RGB_565)
-    for (x in 0 until pixelSize) {
-        for (y in 0 until pixelSize) {
-            bitmap.setPixel(x, y, if (bitMatrix[x, y]) fgColor else bgColor)
-        }
+    val pixels = IntArray(pixelSize * pixelSize) { idx ->
+        val x = idx % pixelSize
+        val y = idx / pixelSize
+        if (bitMatrix[x, y]) fgColor else bgColor
     }
+    val bitmap = Bitmap.createBitmap(pixelSize, pixelSize, Bitmap.Config.RGB_565)
+    bitmap.setPixels(pixels, 0, pixelSize, 0, 0, pixelSize, pixelSize)
     return bitmap
 }

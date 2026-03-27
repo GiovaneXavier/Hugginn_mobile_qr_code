@@ -2,6 +2,7 @@ package com.srbr.huginn.core.security
 
 import android.util.Base64
 import org.json.JSONObject
+import java.security.MessageDigest
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
@@ -86,10 +87,7 @@ class QRValidator @Inject constructor(
 
     internal fun verifyHmac(data: String, received: String): Boolean {
         val expected = computeHmac(data)
-        if (expected.length != received.length) return false
-        var diff = 0
-        for (i in expected.indices) diff = diff or (expected[i].code xor received[i].code)
-        return diff == 0
+        return MessageDigest.isEqual(expected.toByteArray(), received.toByteArray())
     }
 
     internal fun computeHmac(data: String): String {
@@ -97,7 +95,7 @@ class QRValidator @Inject constructor(
         mac.init(SecretKeySpec(hmacKey.toByteArray(), "HmacSHA256"))
         return Base64.encodeToString(
             mac.doFinal(data.toByteArray()),
-            Base64.NO_WRAP or Base64.URL_SAFE
+            Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING
         )
     }
 }

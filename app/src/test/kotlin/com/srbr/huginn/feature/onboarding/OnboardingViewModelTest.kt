@@ -1,11 +1,10 @@
-package com.srbr.huginn
+package com.srbr.huginn.feature.onboarding
 
 import app.cash.turbine.test
+import com.srbr.huginn.core.security.DeviceIdentity
 import com.srbr.huginn.core.security.HuginnCard
 import com.srbr.huginn.core.security.QRValidator
 import com.srbr.huginn.core.storage.CardRepository
-import com.srbr.huginn.feature.onboarding.OnboardingStep
-import com.srbr.huginn.feature.onboarding.OnboardingViewModel
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,9 +18,10 @@ import org.junit.Test
 class OnboardingViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
-    private lateinit var qrValidator: QRValidator
-    private lateinit var repository:  CardRepository
-    private lateinit var viewModel:   OnboardingViewModel
+    private lateinit var qrValidator:    QRValidator
+    private lateinit var repository:     CardRepository
+    private lateinit var deviceIdentity: DeviceIdentity
+    private lateinit var viewModel:      OnboardingViewModel
 
     private val fakeCard = HuginnCard(
         employeeId = "SRBR-0042", employeeName = "Ana Lima",
@@ -33,9 +33,11 @@ class OnboardingViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        qrValidator = mockk()
-        repository  = mockk(relaxed = true)
-        viewModel   = OnboardingViewModel(qrValidator, repository)
+        qrValidator    = mockk()
+        repository     = mockk(relaxed = true)
+        deviceIdentity = mockk(relaxed = true)
+        every { deviceIdentity.getDisplayId() } returns "SRBR-ABCD-1234"
+        viewModel = OnboardingViewModel(qrValidator, repository, deviceIdentity)
     }
 
     @After fun tearDown() { Dispatchers.resetMain() }
@@ -64,7 +66,7 @@ class OnboardingViewModelTest {
         }
     }
 
-    @Test fun `valid QR transitions to Success and saves card`() = runTest {
+    @Test fun `valid QR transitions to Success with device displayId`() = runTest {
         every { qrValidator.validate(any()) } returns QRValidator.Result.Success(fakeCard)
         every { repository.isNonceUsed(any()) } returns false
 
@@ -77,6 +79,9 @@ class OnboardingViewModelTest {
 
             val final = expectMostRecentItem()
             assertTrue(final.step is OnboardingStep.Success)
+            val success = final.step as OnboardingStep.Success
+            assertEquals(fakeCard, success.card)
+            assertEquals("SRBR-ABCD-1234", success.displayId)
             verify { repository.saveCard(fakeCard) }
             verify { repository.markNonceUsed("nonce-abc") }
         }
@@ -89,7 +94,7 @@ class OnboardingViewModelTest {
         viewModel.state.test {
             awaitItem()
             viewModel.onQRDetected("expired-qr")
-            awaitItem() // Validating
+            awaitItem()
             testDispatcher.scheduler.advanceUntilIdle()
             val final = expectMostRecentItem()
             assertTrue(final.step is OnboardingStep.Error)
@@ -112,9 +117,28 @@ class OnboardingViewModelTest {
         }
     }
 
+    @Test fun `onCameraPermissionDenied transitions to Error`() = runTest {
+        viewModel.state.test {
+            awaitItem()
+            viewModel.onCameraPermissionDenied()
+            val state = awaitItem()
+            assertTrue(state.step is OnboardingStep.Error)
+            assertEquals("Câmera negada", (state.step as OnboardingStep.Error).title)
+        }
+    }
+
+    @Test fun `onCameraUnavailable transitions to Error`() = runTest {
+        viewModel.state.test {
+            awaitItem()
+            viewModel.onCameraUnavailable()
+            val state = awaitItem()
+            assertTrue(state.step is OnboardingStep.Error)
+            assertEquals("Câmera indisponível", (state.step as OnboardingStep.Error).title)
+        }
+    }
+
     @Test fun `onTryAgain resets to Welcome`() = runTest {
-        every { qrValidator.validate(any()) } returns
-            QRValidator.Result.Failure("erro")
+        every { qrValidator.validate(any()) } returns QRValidator.Result.Failure("erro")
         viewModel.state.test {
             awaitItem()
             viewModel.onQRDetected("bad")

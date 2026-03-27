@@ -39,10 +39,10 @@ class CardStorage @Inject constructor(
     fun loadCard(): HuginnCard? =
         prefs.getString(KEY_CARD, null)?.let { HuginnCard.fromJson(it) }
 
-    fun hasCard(): Boolean = prefs.contains(KEY_CARD)
+    fun hasCard(): Boolean = prefs.contains(KEY_CARD) && loadCard() != null
 
     fun deleteCard() {
-        prefs.edit().remove(KEY_CARD).apply()
+        prefs.edit().remove(KEY_CARD).remove(KEY_NONCES).apply()
     }
 
     fun isNonceUsed(nonce: String): Boolean =

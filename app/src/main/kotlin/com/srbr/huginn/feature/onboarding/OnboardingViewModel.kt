@@ -2,6 +2,7 @@ package com.srbr.huginn.feature.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.srbr.huginn.core.security.DeviceIdentity
 import com.srbr.huginn.core.security.HuginnCard
 import com.srbr.huginn.core.security.QRValidator
 import com.srbr.huginn.core.storage.CardRepository
@@ -21,7 +22,7 @@ sealed class OnboardingStep {
     object Scanning   : OnboardingStep()
     object Validating : OnboardingStep()
     data class Error(val title: String, val message: String) : OnboardingStep()
-    data class Success(val card: HuginnCard) : OnboardingStep()
+    data class Success(val card: HuginnCard, val displayId: String) : OnboardingStep()
 }
 
 data class OnboardingUiState(
@@ -32,8 +33,9 @@ data class OnboardingUiState(
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
-    private val qrValidator: QRValidator,
-    private val repository:  CardRepository
+    private val qrValidator:    QRValidator,
+    private val repository:     CardRepository,
+    private val deviceIdentity: DeviceIdentity
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnboardingUiState())
@@ -90,9 +92,27 @@ class OnboardingViewModel @Inject constructor(
                     repository.markNonceUsed(card.nonce)
                     repository.saveCard(card)
 
-                    _state.update { it.copy(step = OnboardingStep.Success(card)) }
+                    _state.update { it.copy(step = OnboardingStep.Success(card, deviceIdentity.getDisplayId())) }
                 }
             }
+        }
+    }
+
+    fun onCameraUnavailable() {
+        _state.update {
+            it.copy(step = OnboardingStep.Error(
+                title   = "Câmera indisponível",
+                message = "Não foi possível acessar a câmera. Verifique se outro app está usando-a e tente novamente."
+            ))
+        }
+    }
+
+    fun onCameraPermissionDenied() {
+        _state.update {
+            it.copy(step = OnboardingStep.Error(
+                title   = "Câmera negada",
+                message = "Permissão de câmera necessária para escanear o QR de cadastro. Habilite nas configurações do sistema."
+            ))
         }
     }
 

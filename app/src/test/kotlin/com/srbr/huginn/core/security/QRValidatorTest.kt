@@ -1,6 +1,5 @@
-package com.srbr.huginn
+package com.srbr.huginn.core.security
 
-import com.srbr.huginn.core.security.QRValidator
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Before
@@ -86,5 +85,43 @@ class QRValidatorTest {
 
     @Test fun `verifyHmac rejects mismatch`() {
         assertFalse(validator.verifyHmac("data1", validator.computeHmac("data2")))
+    }
+
+    // ── Q41: Formato de saída do computeHmac (NO_PADDING, URL_SAFE) ──────────
+
+    @Test fun `computeHmac output has no Base64 padding`() {
+        val sig = validator.computeHmac("any canonical string")
+        assertFalse("Signature must not contain '=' padding", sig.contains('='))
+    }
+
+    @Test fun `computeHmac output uses URL-safe chars`() {
+        repeat(50) {
+            val sig = validator.computeHmac("canonical-$it")
+            assertFalse("Must not contain '+'", sig.contains('+'))
+            assertFalse("Must not contain '/'", sig.contains('/'))
+        }
+    }
+
+    @Test fun `computeHmac output length is 43 for SHA-256`() {
+        val sig = validator.computeHmac("test data")
+        assertEquals(43, sig.length)
+    }
+
+    /**
+     * Q41 — Vetor de teste cross-platform.
+     *
+     * O valor esperado foi computado no Node.js com:
+     *   node -e "const c=require('crypto'); \
+     *     console.log(c.createHmac('sha256','TEST_SECRET_KEY') \
+     *     .update('1|REG|1700000000|1700003600|fixed-nonce|EMP001|Test User|SYS001') \
+     *     .digest('base64') \
+     *     .replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+\$/,''))"
+     *
+     * Substitua REPLACE_WITH_NODE_OUTPUT pelo output do comando acima antes de commitar.
+     */
+    @Test fun `computeHmac matches cross-platform reference vector`() {
+        val canonical = "1|REG|1700000000|1700003600|fixed-nonce|EMP001|Test User|SYS001"
+        val expected  = "eSJdyv9cvTX3kst9JbzhJJoiD_P60Svb2UhaXPgVbBE"
+        assertEquals(expected, QRValidator("TEST_SECRET_KEY").computeHmac(canonical))
     }
 }
