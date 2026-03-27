@@ -1,5 +1,6 @@
 package com.srbr.huginn.feature.card
 
+import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.srbr.huginn.core.security.DeviceIdentity
 import com.srbr.huginn.core.security.HuginnCard
@@ -17,7 +18,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class CardViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher   = StandardTestDispatcher()
+    private val savedStateHandle = SavedStateHandle(mapOf("systemId" to "SRBR_EXIT"))
     private lateinit var repository:       CardRepository
     private lateinit var deviceIdentity:   DeviceIdentity
     private lateinit var qrTokenGenerator: QrTokenGenerator
@@ -42,13 +44,13 @@ class CardViewModelTest {
         deviceIdentity   = mockk(relaxed = true)
         qrTokenGenerator = mockk()
 
-        every { repository.getCard() }          returns fakeCard
+        every { repository.getCard(any()) }     returns fakeCard
         every { repository.hasCard() }          returns true
         every { deviceIdentity.getDeviceId() }  returns "ABCD1234EFGH5678"
         every { deviceIdentity.getDisplayId() } returns "SRBR-ABCD-1234"
         every { qrTokenGenerator.generate(any(), any()) } returns "fake-token-abc123"
 
-        viewModel = CardViewModel(repository, deviceIdentity, qrTokenGenerator)
+        viewModel = CardViewModel(repository, deviceIdentity, qrTokenGenerator, savedStateHandle)
     }
 
     @After

@@ -30,33 +30,50 @@ class CardStorageTest {
     @Before
     fun setup() {
         storage = CardStorage(ApplicationProvider.getApplicationContext())
-        storage.deleteCard()
+        storage.deleteAllCards()
     }
 
-    @Test fun `hasCard returns false when no card saved`() {
-        assertFalse(storage.hasCard())
+    @Test fun `hasCards returns false when no card saved`() {
+        assertFalse(storage.hasCards())
     }
 
     @Test fun `saveCard and loadCard roundtrip`() {
         storage.saveCard(fakeCard)
-        val loaded = storage.loadCard()
+        val loaded = storage.loadCard(fakeCard.systemId)
         assertNotNull(loaded)
         assertEquals(fakeCard.employeeId,   loaded!!.employeeId)
         assertEquals(fakeCard.employeeName, loaded.employeeName)
         assertEquals(fakeCard.systemId,     loaded.systemId)
     }
 
-    @Test fun `hasCard returns true after saveCard`() {
+    @Test fun `hasCards returns true after saveCard`() {
         storage.saveCard(fakeCard)
-        assertTrue(storage.hasCard())
+        assertTrue(storage.hasCards())
     }
 
-    @Test fun `deleteCard removes card and nonces`() {
+    @Test fun `deleteAllCards removes all cards and nonces`() {
         storage.saveCard(fakeCard)
         storage.markNonceUsed("nonce-1")
-        storage.deleteCard()
-        assertFalse(storage.hasCard())
+        storage.deleteAllCards()
+        assertFalse(storage.hasCards())
         assertFalse(storage.isNonceUsed("nonce-1"))
+    }
+
+    @Test fun `deleteCard removes only the targeted card`() {
+        storage.saveCard(fakeCard)
+        storage.deleteCard(fakeCard.systemId)
+        assertFalse(storage.hasCards())
+        assertNull(storage.loadCard(fakeCard.systemId))
+    }
+
+    @Test fun `loadCards returns all saved cards`() {
+        val card2 = fakeCard.copy(systemId = "SYS002", systemName = "Sistema 2")
+        storage.saveCard(fakeCard)
+        storage.saveCard(card2)
+        val cards = storage.loadCards()
+        assertEquals(2, cards.size)
+        assertTrue(cards.any { it.systemId == "SYS001" })
+        assertTrue(cards.any { it.systemId == "SYS002" })
     }
 
     @Test fun `isNonceUsed returns false for unknown nonce`() {
