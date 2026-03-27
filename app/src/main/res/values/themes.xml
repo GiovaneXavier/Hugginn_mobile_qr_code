@@ -7,4 +7,10 @@
         <item name="android:windowBackground">#0D0D1A</item>
         <item name="android:statusBarColor">#0D0D1A</item>
     </style>
+
+    <style name="Theme.Huginn.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#0D0D1A</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+    </style>
 </resources>

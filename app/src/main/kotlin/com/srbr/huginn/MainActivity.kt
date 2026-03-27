@@ -18,11 +18,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -40,6 +42,8 @@ class MainActivity : AppCompatActivity() {
 
     @Inject lateinit var repository: CardRepository
 
+    private var startDestination: Routes? by mutableStateOf(null)
+
     private lateinit var cameraExecutor: ExecutorService
     private var onQRResult: ((String) -> Unit)? = null
     private var onCameraPermissionDenied: (() -> Unit)? = null
@@ -55,20 +59,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        splashScreen.setKeepOnScreenCondition { startDestination == null }
+
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         cameraExecutor = Executors.newSingleThreadExecutor()
 
+        lifecycleScope.launch {
+            startDestination = withContext(Dispatchers.IO) {
+                if (repository.hasCard()) Routes.CARD else Routes.ONBOARDING
+            }
+        }
+
         setContent {
             HuginnTheme {
-                var startDestination by remember { mutableStateOf<Routes?>(null) }
-
-                LaunchedEffect(Unit) {
-                    startDestination = withContext(Dispatchers.IO) {
-                        if (repository.hasCard()) Routes.CARD else Routes.ONBOARDING
-                    }
-                }
-
                 Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
                     val dest = startDestination
                     if (dest != null) {
@@ -90,16 +96,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestBiometric(onSuccess: () -> Unit) {
+        var failCount = 0
         val executor = ContextCompat.getMainExecutor(this)
+        lateinit var prompt: BiometricPrompt
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 super.onAuthenticationSucceeded(result)
                 onSuccess()
             }
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {}
-            override fun onAuthenticationFailed() {}
+            override fun onAuthenticationFailed() {
+                failCount++
+                if (failCount >= 3) prompt.cancelAuthentication()
+            }
         }
-        BiometricPrompt(this, executor, callback).authenticate(
+        prompt = BiometricPrompt(this, executor, callback)
+        prompt.authenticate(
             BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Huginn")
                 .setSubtitle("Confirme sua identidade para exibir o QR Code")
