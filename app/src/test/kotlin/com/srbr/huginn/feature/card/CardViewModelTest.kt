@@ -1,11 +1,10 @@
-package com.srbr.huginn
+package com.srbr.huginn.feature.card
 
 import app.cash.turbine.test
 import com.srbr.huginn.core.security.DeviceIdentity
 import com.srbr.huginn.core.security.HuginnCard
 import com.srbr.huginn.core.security.QrTokenGenerator
 import com.srbr.huginn.core.storage.CardRepository
-import com.srbr.huginn.feature.card.CardViewModel
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -70,7 +69,7 @@ class CardViewModelTest {
     @Test
     fun `onBiometricSuccess sets isUnlocked true and generates QR token`() = runTest {
         viewModel.state.test {
-            awaitItem() // initial state
+            awaitItem()
             viewModel.onBiometricSuccess()
             val unlocked = awaitItem()
             assertTrue(unlocked.isUnlocked)
@@ -92,7 +91,7 @@ class CardViewModelTest {
         viewModel.state.test {
             awaitItem()
             viewModel.onBiometricSuccess()
-            awaitItem() // unlocked + qrToken preenchido
+            awaitItem()
             viewModel.onExpire()
             val locked = awaitItem()
             assertFalse(locked.isUnlocked)
@@ -143,19 +142,17 @@ class CardViewModelTest {
 
     @Test
     fun `QR token refreshes every 10 seconds`() = runTest {
-        // Configura tokens distintos para cada chamada
         var callCount = 0
         every { qrTokenGenerator.generate(any(), any()) } answers {
             "token-${++callCount}"
         }
 
         viewModel.state.test {
-            awaitItem() // initial
+            awaitItem()
             viewModel.onBiometricSuccess()
             val first = awaitItem()
             assertEquals("token-1", first.qrToken)
 
-            // Avança 10s — deve renovar o QR
             testDispatcher.scheduler.advanceTimeBy(10_000)
             val refreshed = expectMostRecentItem()
             assertEquals("token-2", refreshed.qrToken)

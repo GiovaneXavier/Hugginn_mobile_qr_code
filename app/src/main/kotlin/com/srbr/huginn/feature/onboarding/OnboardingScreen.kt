@@ -20,7 +20,8 @@ import com.srbr.huginn.ui.theme.*
 @Composable
 fun OnboardingScreen(
     onRegistered:    () -> Unit,
-    onRequestCamera: (onQRDetected: (String) -> Unit) -> Unit,
+    onRequestCamera: (onQRDetected: (String) -> Unit, onPermissionDenied: () -> Unit, onUnavailable: () -> Unit) -> Unit,
+    onStopCamera:    () -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -50,11 +51,15 @@ fun OnboardingScreen(
                 is OnboardingStep.Welcome    -> WelcomeStep(
                     onStartScan = {
                         viewModel.onStartScan()
-                        onRequestCamera { qr -> viewModel.onQRDetected(qr) }
+                        onRequestCamera(
+                            { qr -> viewModel.onQRDetected(qr) },
+                            { viewModel.onCameraPermissionDenied() },
+                            { viewModel.onCameraUnavailable() }
+                        )
                     }
                 )
                 is OnboardingStep.Scanning   -> ScanningStep(
-                    onCancel = viewModel::onCancelScan
+                    onCancel = { onStopCamera(); viewModel.onCancelScan() }
                 )
                 is OnboardingStep.Validating -> ValidatingStep(
                     status = state.validatingStatus,
@@ -65,7 +70,7 @@ fun OnboardingScreen(
                     message = step.message,
                     onRetry = viewModel::onTryAgain
                 )
-                is OnboardingStep.Success    -> SuccessStep(card = step.card)
+                is OnboardingStep.Success    -> SuccessStep(card = step.card, displayId = step.displayId)
             }
         }
     }
@@ -165,7 +170,7 @@ private fun ErrorStep(title: String, message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun SuccessStep(card: HuginnCard) {
+private fun SuccessStep(card: HuginnCard, displayId: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(32.dp)
@@ -180,7 +185,7 @@ private fun SuccessStep(card: HuginnCard) {
         Spacer(modifier = Modifier.height(36.dp))
         HuginnCard(
             card        = card,
-            displayId   = card.employeeId,
+            displayId   = displayId,
             isUnlocked  = true
         )
         Spacer(modifier = Modifier.height(24.dp))

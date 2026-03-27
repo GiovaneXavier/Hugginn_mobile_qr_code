@@ -1,12 +1,12 @@
 package com.srbr.huginn.core.security
 
 import android.util.Base64
+import java.security.SecureRandom
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
-import kotlin.random.Random
 
 /**
  * Gera tokens assinados com HMAC-SHA256 para exibição via QR Code.
@@ -34,14 +34,14 @@ class QrTokenGenerator @Inject constructor(
      */
     fun generate(card: HuginnCard, deviceId: String): String {
         val ts    = System.currentTimeMillis() / 1000L
-        val nonce = Random.nextLong(100_000L, 999_999L)
+        val nonce = SecureRandom().nextLong() and 0xFFFFFFL
         val data  = "$deviceId|${card.employeeId}|${card.systemId}|$ts|$nonce"
 
         val mac = Mac.getInstance("HmacSHA256")
         mac.init(SecretKeySpec(hmacKey.toByteArray(Charsets.UTF_8), "HmacSHA256"))
         val sig = Base64.encodeToString(
             mac.doFinal(data.toByteArray(Charsets.UTF_8)),
-            Base64.NO_WRAP or Base64.URL_SAFE
+            Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING
         )
         return "$data.$sig"
     }

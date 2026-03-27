@@ -3,7 +3,9 @@ package com.srbr.huginn
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.util.Size
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -15,7 +17,11 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -36,26 +42,48 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var cameraExecutor: ExecutorService
     private var onQRResult: ((String) -> Unit)? = null
+    private var onCameraPermissionDenied: (() -> Unit)? = null
+    private var onCameraUnavailable: (() -> Unit)? = null
     private var isAnalyzing = false
+    private var activeCameraProvider: ProcessCameraProvider? = null
 
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) startQRCamera() }
+    ) { granted ->
+        if (granted) startQRCamera()
+        else onCameraPermissionDenied?.invoke()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         cameraExecutor = Executors.newSingleThreadExecutor()
-
-        val start = if (repository.hasCard()) Routes.CARD else Routes.ONBOARDING
 
         setContent {
             HuginnTheme {
+                var startDestination by remember { mutableStateOf<Routes?>(null) }
+
+                LaunchedEffect(Unit) {
+                    startDestination = withContext(Dispatchers.IO) {
+                        if (repository.hasCard()) Routes.CARD else Routes.ONBOARDING
+                    }
+                }
+
                 Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
-                    HuginnNavGraph(
-                        startDestination   = start,
-                        onRequestBiometric = ::requestBiometric,
-                        onRequestCamera    = { onQR -> onQRResult = onQR; requestCamera() }
-                    )
+                    val dest = startDestination
+                    if (dest != null) {
+                        HuginnNavGraph(
+                            startDestination   = dest,
+                            onRequestBiometric = ::requestBiometric,
+                            onRequestCamera    = { onQR, onDenied, onUnavailable ->
+                                onQRResult = onQR
+                                onCameraPermissionDenied = onDenied
+                                onCameraUnavailable = onUnavailable
+                                requestCamera()
+                            },
+                            onStopCamera       = ::stopQRCamera
+                        )
+                    }
                 }
             }
         }
@@ -89,12 +117,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun stopQRCamera() {
+        isAnalyzing = false
+        activeCameraProvider?.unbindAll()
+        activeCameraProvider = null
+    }
+
     @OptIn(ExperimentalGetImage::class)
     private fun startQRCamera() {
         isAnalyzing = true
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
             val provider = future.get()
+            activeCameraProvider = provider
             val scanner  = BarcodeScanning.getClient(
                 BarcodeScannerOptions.Builder()
                     .setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
@@ -125,7 +160,11 @@ class MainActivity : AppCompatActivity() {
             try {
                 provider.unbindAll()
                 provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, analysis)
-            } catch (e: Exception) { /* camera indisponível */ }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Camera bind failed: ${e.message}")
+                activeCameraProvider = null
+                runOnUiThread { onCameraUnavailable?.invoke() }
+            }
         }, ContextCompat.getMainExecutor(this))
     }
 

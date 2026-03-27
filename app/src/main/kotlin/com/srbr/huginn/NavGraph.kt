@@ -18,7 +18,8 @@ fun HuginnNavGraph(
     startDestination:    String,
     navController:       NavHostController = rememberNavController(),
     onRequestBiometric:  (onSuccess: () -> Unit) -> Unit,
-    onRequestCamera:     (onQRDetected: (String) -> Unit) -> Unit
+    onRequestCamera:     (onQRDetected: (String) -> Unit, onPermissionDenied: () -> Unit, onUnavailable: () -> Unit) -> Unit,
+    onStopCamera:        () -> Unit
 ) {
     NavHost(
         navController    = navController,
@@ -31,7 +32,8 @@ fun HuginnNavGraph(
                         popUpTo(Routes.ONBOARDING) { inclusive = true }
                     }
                 },
-                onRequestCamera = onRequestCamera
+                onRequestCamera = onRequestCamera,
+                onStopCamera    = onStopCamera
             )
         }
 
