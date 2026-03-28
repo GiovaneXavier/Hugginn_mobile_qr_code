@@ -1,5 +1,6 @@
 package com.srbr.huginn.feature.onboarding
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.srbr.huginn.core.security.DeviceIdentity
@@ -33,12 +34,25 @@ data class OnboardingUiState(
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
-    private val qrValidator:    QRValidator,
-    private val repository:     CardRepository,
-    private val deviceIdentity: DeviceIdentity
+    private val qrValidator:      QRValidator,
+    private val repository:       CardRepository,
+    private val deviceIdentity:   DeviceIdentity,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(OnboardingUiState())
+    private companion object {
+        const val KEY_ERROR_TITLE   = "onboarding_error_title"
+        const val KEY_ERROR_MESSAGE = "onboarding_error_message"
+    }
+
+    private val _state = MutableStateFlow(
+        savedStateHandle.get<String>(KEY_ERROR_TITLE)?.let { title ->
+            OnboardingUiState(step = OnboardingStep.Error(
+                title   = title,
+                message = savedStateHandle.get<String>(KEY_ERROR_MESSAGE) ?: ""
+            ))
+        } ?: OnboardingUiState()
+    )
     val state: StateFlow<OnboardingUiState> = _state.asStateFlow()
 
     fun onStartScan() {
@@ -61,23 +75,16 @@ class OnboardingViewModel @Inject constructor(
 
             when (result) {
                 is QRValidator.Result.Failure -> {
-                    _state.update {
-                        it.copy(step = OnboardingStep.Error(
-                            title   = "QR Inválido",
-                            message = result.reason
-                        ))
-                    }
+                    setError("QR Inválido", result.reason)
                 }
                 is QRValidator.Result.Success -> {
                     val card = result.card
 
                     if (repository.isNonceUsed(card.nonce)) {
-                        _state.update {
-                            it.copy(step = OnboardingStep.Error(
-                                title   = "QR já utilizado",
-                                message = "Este QR já foi usado. Solicite um novo ao administrador."
-                            ))
-                        }
+                        setError(
+                            "QR já utilizado",
+                            "Este QR já foi usado. Solicite um novo ao administrador."
+                        )
                         return@launch
                     }
 
@@ -99,24 +106,28 @@ class OnboardingViewModel @Inject constructor(
     }
 
     fun onCameraUnavailable() {
-        _state.update {
-            it.copy(step = OnboardingStep.Error(
-                title   = "Câmera indisponível",
-                message = "Não foi possível acessar a câmera. Verifique se outro app está usando-a e tente novamente."
-            ))
-        }
+        setError(
+            "Câmera indisponível",
+            "Não foi possível acessar a câmera. Verifique se outro app está usando-a e tente novamente."
+        )
     }
 
     fun onCameraPermissionDenied() {
-        _state.update {
-            it.copy(step = OnboardingStep.Error(
-                title   = "Câmera negada",
-                message = "Permissão de câmera necessária para escanear o QR de cadastro. Habilite nas configurações do sistema."
-            ))
-        }
+        setError(
+            "Câmera negada",
+            "Permissão de câmera necessária para escanear o QR de cadastro. Habilite nas configurações do sistema."
+        )
     }
 
     fun onTryAgain() {
+        savedStateHandle.remove<String>(KEY_ERROR_TITLE)
+        savedStateHandle.remove<String>(KEY_ERROR_MESSAGE)
         _state.update { it.copy(step = OnboardingStep.Welcome) }
+    }
+
+    private fun setError(title: String, message: String) {
+        savedStateHandle[KEY_ERROR_TITLE]   = title
+        savedStateHandle[KEY_ERROR_MESSAGE] = message
+        _state.update { it.copy(step = OnboardingStep.Error(title, message)) }
     }
 }
