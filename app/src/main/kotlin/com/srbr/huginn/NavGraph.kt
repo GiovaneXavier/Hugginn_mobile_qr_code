@@ -1,16 +1,24 @@
 package com.srbr.huginn
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.srbr.huginn.feature.card.CardScreen
+import com.srbr.huginn.feature.card_list.CardListScreen
 import com.srbr.huginn.feature.onboarding.OnboardingScreen
 
 object Routes {
     const val ONBOARDING = "onboarding"
-    const val CARD       = "card"
+    const val CARD_LIST  = "card_list"
+    const val CARD       = "card/{systemId}"
+
+    /** Builds the filled-in route for navigating to a specific card. */
+    fun card(systemId: String) = "card/${Uri.encode(systemId)}"
 }
 
 @Composable
@@ -27,8 +35,8 @@ fun HuginnNavGraph(
     ) {
         composable(Routes.ONBOARDING) {
             OnboardingScreen(
-                onRegistered    = {
-                    navController.navigate(Routes.CARD) {
+                onRegistered = { systemId ->
+                    navController.navigate(Routes.card(systemId)) {
                         popUpTo(Routes.ONBOARDING) { inclusive = true }
                     }
                 },
@@ -37,10 +45,18 @@ fun HuginnNavGraph(
             )
         }
 
-        composable(Routes.CARD) {
-            CardScreen(
-                onRequestBiometric = onRequestBiometric
+        composable(Routes.CARD_LIST) {
+            CardListScreen(
+                onSelectCard = { systemId -> navController.navigate(Routes.card(systemId)) },
+                onAddCard    = { navController.navigate(Routes.ONBOARDING) }
             )
+        }
+
+        composable(
+            route     = Routes.CARD,
+            arguments = listOf(navArgument("systemId") { type = NavType.StringType })
+        ) {
+            CardScreen(onRequestBiometric = onRequestBiometric)
         }
     }
 }

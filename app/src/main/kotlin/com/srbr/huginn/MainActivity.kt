@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     @Inject lateinit var repository: CardRepository
 
-    private var startDestination: Routes? by mutableStateOf(null)
+    private var startDestination: String? by mutableStateOf(null)
 
     private lateinit var cameraExecutor: ExecutorService
     private var onQRResult: ((String) -> Unit)? = null
@@ -69,7 +69,12 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             startDestination = withContext(Dispatchers.IO) {
-                if (repository.hasCard()) Routes.CARD else Routes.ONBOARDING
+                val cards = repository.getCards()
+                when (cards.size) {
+                    0    -> Routes.ONBOARDING
+                    1    -> Routes.card(cards.first().systemId)
+                    else -> Routes.CARD_LIST
+                }
             }
         }
 

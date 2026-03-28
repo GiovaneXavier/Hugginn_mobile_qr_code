@@ -1,5 +1,6 @@
 package com.srbr.huginn.feature.card
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.srbr.huginn.core.security.DeviceIdentity
@@ -28,9 +29,10 @@ data class CardUiState(
 
 @HiltViewModel
 class CardViewModel @Inject constructor(
-    private val repository:      CardRepository,
-    private val deviceIdentity:  DeviceIdentity,
-    private val qrTokenGenerator: QrTokenGenerator
+    private val repository:       CardRepository,
+    private val deviceIdentity:   DeviceIdentity,
+    private val qrTokenGenerator: QrTokenGenerator,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CardUiState())
@@ -45,7 +47,8 @@ class CardViewModel @Inject constructor(
     init { loadCard() }
 
     private fun loadCard() {
-        val card = repository.getCard()
+        val systemId = savedStateHandle.get<String>("systemId") ?: return
+        val card = repository.getCard(systemId)
         _state.update {
             it.copy(
                 card      = card,
