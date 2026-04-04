@@ -145,6 +145,27 @@ class CardViewModelTest {
     }
 
     @Test
+    fun `second biometric unlock works after first expires`() = runTest(testDispatcher) {
+        viewModel.state.test {
+            awaitItem()
+            viewModel.onBiometricSuccess()
+            awaitItem() // unlocked
+
+            advanceTimeBy(31_000)
+            runCurrent()
+            val expired = expectMostRecentItem()
+            assertFalse(expired.isUnlocked)
+            assertTrue(expired.qrToken.isEmpty())
+
+            viewModel.onBiometricSuccess()
+            val second = awaitItem()
+            assertTrue(second.isUnlocked)
+            assertEquals("fake-token-abc123", second.qrToken)
+            assertEquals(30, second.countdown)
+        }
+    }
+
+    @Test
     fun `QR token refreshes every 10 seconds`() = runTest(testDispatcher) {
         var callCount = 0
         every { qrTokenGenerator.generate(any(), any()) } answers {

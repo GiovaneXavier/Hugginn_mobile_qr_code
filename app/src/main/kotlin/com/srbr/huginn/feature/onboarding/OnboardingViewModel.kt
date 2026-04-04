@@ -8,6 +8,7 @@ import com.srbr.huginn.core.security.HuginnCard
 import com.srbr.huginn.core.security.QRValidator
 import com.srbr.huginn.core.storage.CardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,8 @@ class OnboardingViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
+    internal var defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
+
     private companion object {
         const val KEY_ERROR_TITLE   = "onboarding_error_title"
         const val KEY_ERROR_MESSAGE = "onboarding_error_message"
@@ -69,7 +72,7 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch {
             delay(600) // feedback visual breve
 
-            val result = withContext(Dispatchers.Default) {
+            val result = withContext(defaultDispatcher) {
                 qrValidator.validate(content)
             }
 

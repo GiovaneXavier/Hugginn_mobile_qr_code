@@ -1,7 +1,7 @@
 package com.srbr.huginn.core.security
 
-import android.util.Base64
 import java.security.SecureRandom
+import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
@@ -39,10 +39,8 @@ class QrTokenGenerator @Inject constructor(
 
         val mac = Mac.getInstance("HmacSHA256")
         mac.init(SecretKeySpec(hmacKey.toByteArray(Charsets.UTF_8), "HmacSHA256"))
-        val sig = Base64.encodeToString(
-            mac.doFinal(data.toByteArray(Charsets.UTF_8)),
-            Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING
-        )
+        val sig = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(mac.doFinal(data.toByteArray(Charsets.UTF_8)))
         return "$data.$sig"
     }
 }

@@ -39,6 +39,7 @@ class OnboardingViewModelTest {
         deviceIdentity = mockk(relaxed = true)
         every { deviceIdentity.getDisplayId() } returns "SRBR-ABCD-1234"
         viewModel = OnboardingViewModel(qrValidator, repository, deviceIdentity, SavedStateHandle())
+        viewModel.defaultDispatcher = testDispatcher
     }
 
     @After fun tearDown() { Dispatchers.resetMain() }

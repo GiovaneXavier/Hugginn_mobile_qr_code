@@ -11,8 +11,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CardStorage @Inject constructor(
-    @ApplicationContext private val context: Context
+open class CardStorage @Inject constructor(
+    @ApplicationContext internal val context: Context
 ) {
     private companion object {
         const val PREFS_FILE = "huginn_secure_store"
@@ -22,7 +22,9 @@ class CardStorage @Inject constructor(
         const val MAX_NONCES = 50
     }
 
-    private val prefs: SharedPreferences by lazy {
+    private val prefs: SharedPreferences by lazy { createPrefs() }
+
+    internal open fun createPrefs(): SharedPreferences =
         EncryptedSharedPreferences.create(
             context,
             PREFS_FILE,
@@ -32,7 +34,6 @@ class CardStorage @Inject constructor(
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
-    }
 
     // ── Multi-card read ───────────────────────────────────────────────────────
 

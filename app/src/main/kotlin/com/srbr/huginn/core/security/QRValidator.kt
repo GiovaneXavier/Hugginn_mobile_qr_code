@@ -1,8 +1,8 @@
 package com.srbr.huginn.core.security
 
-import android.util.Base64
 import org.json.JSONObject
 import java.security.MessageDigest
+import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
@@ -93,9 +93,7 @@ class QRValidator @Inject constructor(
     internal fun computeHmac(data: String): String {
         val mac = Mac.getInstance("HmacSHA256")
         mac.init(SecretKeySpec(hmacKey.toByteArray(), "HmacSHA256"))
-        return Base64.encodeToString(
-            mac.doFinal(data.toByteArray()),
-            Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING
-        )
+        return Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(mac.doFinal(data.toByteArray()))
     }
 }
