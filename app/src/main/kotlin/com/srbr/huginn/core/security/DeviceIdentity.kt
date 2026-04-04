@@ -13,17 +13,17 @@ class DeviceIdentity @Inject constructor(
 ) {
     private val salt = "SRBR_HUGINN_2024"
 
-    private val deviceId: String by lazy {
+    private val deviceIdentifier: String by lazy {
         val androidId = Settings.Secure.getString(
             context.contentResolver, Settings.Secure.ANDROID_ID
         ) ?: "unknown"
         sha256("$salt:$androidId").take(16).uppercase()
     }
 
-    fun getDeviceId(): String = deviceId
+    fun getDeviceId(): String = deviceIdentifier
 
     fun getDisplayId(): String {
-        val id = deviceId
+        val id = deviceIdentifier
         return "SRBR-${id.take(4)}-${id.drop(4).take(4)}"
     }
 
