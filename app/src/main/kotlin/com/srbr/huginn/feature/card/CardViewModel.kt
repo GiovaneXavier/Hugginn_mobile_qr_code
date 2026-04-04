@@ -63,8 +63,16 @@ class CardViewModel @Inject constructor(
      * Gera o primeiro QR e inicia os loops de countdown e refresh.
      */
     fun onBiometricSuccess() {
-        _state.update { it.copy(isUnlocked = true, countdown = AUTH_WINDOW_SECS, countdownPct = 1f) }
-        refreshQrToken()
+        val card = _state.value.card ?: return
+        val token = qrTokenGenerator.generate(card, deviceIdentity.getDeviceId())
+        _state.update {
+            it.copy(
+                isUnlocked   = true,
+                countdown    = AUTH_WINDOW_SECS,
+                countdownPct = 1f,
+                qrToken      = token
+            )
+        }
         startCountdown()
         startQrRefresh()
     }

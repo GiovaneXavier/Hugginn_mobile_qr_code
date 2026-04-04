@@ -1,5 +1,6 @@
 package com.srbr.huginn.feature.onboarding
 
+import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.srbr.huginn.core.security.DeviceIdentity
 import com.srbr.huginn.core.security.HuginnCard
@@ -37,7 +38,7 @@ class OnboardingViewModelTest {
         repository     = mockk(relaxed = true)
         deviceIdentity = mockk(relaxed = true)
         every { deviceIdentity.getDisplayId() } returns "SRBR-ABCD-1234"
-        viewModel = OnboardingViewModel(qrValidator, repository, deviceIdentity)
+        viewModel = OnboardingViewModel(qrValidator, repository, deviceIdentity, SavedStateHandle())
     }
 
     @After fun tearDown() { Dispatchers.resetMain() }

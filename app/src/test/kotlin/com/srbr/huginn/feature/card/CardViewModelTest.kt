@@ -115,27 +115,29 @@ class CardViewModelTest {
     }
 
     @Test
-    fun `countdown decrements over time`() = runTest {
+    fun `countdown decrements over time`() = runTest(testDispatcher) {
         viewModel.state.test {
             awaitItem()
             viewModel.onBiometricSuccess()
             val start = awaitItem()
             assertEquals(30, start.countdown)
 
-            testDispatcher.scheduler.advanceTimeBy(3000)
+            advanceTimeBy(3000)
+            runCurrent()
             val after3s = expectMostRecentItem()
             assertTrue(after3s.countdown <= 27)
         }
     }
 
     @Test
-    fun `countdown expires and locks automatically`() = runTest {
+    fun `countdown expires and locks automatically`() = runTest(testDispatcher) {
         viewModel.state.test {
             awaitItem()
             viewModel.onBiometricSuccess()
             awaitItem()
 
-            testDispatcher.scheduler.advanceTimeBy(31_000)
+            advanceTimeBy(31_000)
+            runCurrent()
             val expired = expectMostRecentItem()
             assertFalse(expired.isUnlocked)
             assertTrue(expired.qrToken.isEmpty())
@@ -143,7 +145,7 @@ class CardViewModelTest {
     }
 
     @Test
-    fun `QR token refreshes every 10 seconds`() = runTest {
+    fun `QR token refreshes every 10 seconds`() = runTest(testDispatcher) {
         var callCount = 0
         every { qrTokenGenerator.generate(any(), any()) } answers {
             "token-${++callCount}"
@@ -155,7 +157,8 @@ class CardViewModelTest {
             val first = awaitItem()
             assertEquals("token-1", first.qrToken)
 
-            testDispatcher.scheduler.advanceTimeBy(10_000)
+            advanceTimeBy(10_000)
+            runCurrent()
             val refreshed = expectMostRecentItem()
             assertEquals("token-2", refreshed.qrToken)
         }
