@@ -13,9 +13,9 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@mipmap/hugginn_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/ic_launcher"
+        android:roundIcon="@mipmap/hugginn_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
