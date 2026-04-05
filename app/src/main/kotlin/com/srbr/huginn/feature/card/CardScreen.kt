@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -18,7 +19,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.srbr.huginn.ui.components.HuginnCard
 import com.srbr.huginn.ui.components.QrCode
@@ -26,27 +26,34 @@ import com.srbr.huginn.ui.theme.*
 
 @Composable
 fun CardScreen(
-    onNavigateBack:     () -> Unit,
-    onRequestBiometric: (onSuccess: () -> Unit, onDismiss: () -> Unit) -> Unit,
-    viewModel: CardViewModel = hiltViewModel()
+    onRequestBiometric: (onSuccess: () -> Unit) -> Unit,
+    onBack:             () -> Unit,
+    viewModel:          CardViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // Objeto MutableState capturado por referência no DisposableEffect — atualiza
-    // imediatamente na atribuição, sem depender de recomposição. Isso garante que
-    // o observer de ON_STOP leia o valor correto mesmo antes do próximo frame.
-    val biometricInProgress = remember { mutableStateOf(false) }
 
-    BackHandler { onNavigateBack() }
+    // Se desbloqueado: trava o cartão e fica na tela. Se bloqueado: navega para trás.
+    BackHandler {
+        if (state.isUnlocked) viewModel.onExpire() else onBack()
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP && !biometricInProgress.value) {
+            if (event == Lifecycle.Event.ON_STOP) {
                 viewModel.onAppBackground()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Aguarda loadCard() completar antes de exibir a tela
+    if (!state.hasLoaded) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = SamsungBlue)
+        }
+        return
     }
 
     Box(
@@ -55,9 +62,9 @@ fun CardScreen(
             .then(Modifier.systemBarsPadding()),
         contentAlignment = Alignment.Center
     ) {
-        // Botão voltar no canto superior esquerdo
+        // Botão voltar — trava se desbloqueado, navega se bloqueado
         IconButton(
-            onClick  = onNavigateBack,
+            onClick  = { if (state.isUnlocked) viewModel.onExpire() else onBack() },
             modifier = Modifier.align(Alignment.TopStart)
         ) {
             Icon(
@@ -82,7 +89,6 @@ fun CardScreen(
             )
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Cartão com animação de flip 3D
             HuginnCard(
                 card       = state.card,
                 displayId  = state.displayId,
@@ -132,14 +138,7 @@ fun CardScreen(
             AnimatedVisibility(visible = !state.isUnlocked) {
                 Button(
                     onClick = {
-                        biometricInProgress.value = true
-                        onRequestBiometric(
-                            {
-                                biometricInProgress.value = false
-                                viewModel.onBiometricSuccess()
-                            },
-                            { biometricInProgress.value = false }
-                        )
+                        onRequestBiometric { viewModel.onBiometricSuccess() }
                     },
                     modifier = Modifier
                         .width(280.dp)

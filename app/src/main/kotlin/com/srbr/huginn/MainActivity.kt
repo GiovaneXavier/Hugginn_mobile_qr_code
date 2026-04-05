@@ -86,7 +86,7 @@ class MainActivity : AppCompatActivity() {
                     if (dest != null) {
                         HuginnNavGraph(
                             startDestination   = dest,
-                            onRequestBiometric = { onSuccess, onDismiss -> requestBiometric(onSuccess, onDismiss) },
+                            onRequestBiometric = ::requestBiometric,
                             onRequestCamera    = { sp, onQR, onDenied, onUnavailable ->
                                 cameraSurfaceProvider = sp
                                 onQRResult = onQR
@@ -102,28 +102,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestBiometric(onSuccess: () -> Unit, onDismiss: () -> Unit) {
-        var failCount = 0
+    private fun requestBiometric(onSuccess: () -> Unit) {
         val executor = ContextCompat.getMainExecutor(this)
-        lateinit var prompt: BiometricPrompt
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 super.onAuthenticationSucceeded(result)
                 onSuccess()
             }
-            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                onDismiss()
-            }
-            override fun onAuthenticationFailed() {
-                failCount++
-                if (failCount >= 3) {
-                    prompt.cancelAuthentication()
-                    onDismiss()
-                }
-            }
         }
-        prompt = BiometricPrompt(this, executor, callback)
-        prompt.authenticate(
+        BiometricPrompt(this, executor, callback).authenticate(
             BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Huginn")
                 .setSubtitle("Confirme sua identidade para exibir o QR Code")

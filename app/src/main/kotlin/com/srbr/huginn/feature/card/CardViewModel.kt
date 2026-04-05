@@ -26,6 +26,7 @@ data class CardUiState(
     val countdown:    Int         = 0,      // segundos restantes
     val countdownPct: Float       = 0f,     // 0..1 para barra de progresso
     val hasCard:      Boolean     = false,
+    val hasLoaded:    Boolean     = false,  // true após loadCard() completar
     val qrToken:      String      = ""      // token atual exibido no QR Code
 )
 
@@ -58,10 +59,13 @@ class CardViewModel @Inject constructor(
         // entre startDestination e navigate()), usa o primeiro cartão disponível.
         val card = systemId?.let { repository.getCard(it) }
             ?: repository.getCards().firstOrNull()
-        if (card != null) {
-            _state.update {
-                it.copy(card = card, displayId = deviceIdentity.getDisplayId(), hasCard = true)
-            }
+        _state.update {
+            it.copy(
+                card      = card,
+                displayId = deviceIdentity.getDisplayId(),
+                hasCard   = card != null,
+                hasLoaded = true
+            )
         }
     }
 
