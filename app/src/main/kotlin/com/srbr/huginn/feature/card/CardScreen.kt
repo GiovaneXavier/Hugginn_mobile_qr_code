@@ -67,13 +67,13 @@ fun CardScreen(
 
             // Label superior
             Text(
-                text          = "SRBR · HEIMDALL",
+                text          = "SRBR · HUGGINN",
                 fontSize      = 11.sp,
                 color         = SubtleText,
                 letterSpacing = 2.sp,
                 fontWeight    = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             HuginnCard(
                 card       = state.card,

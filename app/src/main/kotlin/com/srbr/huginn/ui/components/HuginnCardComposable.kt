@@ -82,7 +82,7 @@ fun HuginnCard(
                 letterSpacing = 0.5.sp
             )
             Text(
-                text       = "Huginn",
+                text       = "Hugginn",
                 fontSize   = 26.sp,
                 color      = Color.White,
                 fontWeight = FontWeight.Bold
