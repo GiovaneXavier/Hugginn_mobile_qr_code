@@ -4,8 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,18 +60,6 @@ fun CardScreen(
             .then(Modifier.systemBarsPadding()),
         contentAlignment = Alignment.Center
     ) {
-        // Botão voltar — trava se desbloqueado, navega se bloqueado
-        IconButton(
-            onClick  = { if (state.isUnlocked) viewModel.onExpire() else onBack() },
-            modifier = Modifier.align(Alignment.TopStart)
-        ) {
-            Icon(
-                imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Voltar",
-                tint               = SubtleText
-            )
-        }
-
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(horizontal = 24.dp)
