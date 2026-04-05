@@ -1,7 +1,10 @@
 package com.srbr.huginn
 
+import android.app.Activity
 import android.net.Uri
+import androidx.camera.core.Preview
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -25,8 +28,8 @@ object Routes {
 fun HuginnNavGraph(
     startDestination:    String,
     navController:       NavHostController = rememberNavController(),
-    onRequestBiometric:  (onSuccess: () -> Unit) -> Unit,
-    onRequestCamera:     (onQRDetected: (String) -> Unit, onPermissionDenied: () -> Unit, onUnavailable: () -> Unit) -> Unit,
+    onRequestBiometric:  (onSuccess: () -> Unit, onDismiss: () -> Unit) -> Unit,
+    onRequestCamera:     (surfaceProvider: Preview.SurfaceProvider, onQRDetected: (String) -> Unit, onPermissionDenied: () -> Unit, onUnavailable: () -> Unit) -> Unit,
     onStopCamera:        () -> Unit
 ) {
     NavHost(
@@ -56,7 +59,17 @@ fun HuginnNavGraph(
             route     = Routes.CARD,
             arguments = listOf(navArgument("systemId") { type = NavType.StringType })
         ) {
-            CardScreen(onRequestBiometric = onRequestBiometric)
+            val activity = LocalContext.current as Activity
+            CardScreen(
+                onNavigateBack = {
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    } else {
+                        activity.moveTaskToBack(true)
+                    }
+                },
+                onRequestBiometric = onRequestBiometric
+            )
         }
     }
 }

@@ -1,8 +1,11 @@
 package com.srbr.huginn.feature.card
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,15 +26,24 @@ import com.srbr.huginn.ui.theme.*
 
 @Composable
 fun CardScreen(
-    onRequestBiometric: (onSuccess: () -> Unit) -> Unit,
+    onNavigateBack:     () -> Unit,
+    onRequestBiometric: (onSuccess: () -> Unit, onDismiss: () -> Unit) -> Unit,
     viewModel: CardViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Objeto MutableState capturado por referência no DisposableEffect — atualiza
+    // imediatamente na atribuição, sem depender de recomposição. Isso garante que
+    // o observer de ON_STOP leia o valor correto mesmo antes do próximo frame.
+    val biometricInProgress = remember { mutableStateOf(false) }
+
+    BackHandler { onNavigateBack() }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) viewModel.onAppBackground()
+            if (event == Lifecycle.Event.ON_STOP && !biometricInProgress.value) {
+                viewModel.onAppBackground()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -43,6 +55,18 @@ fun CardScreen(
             .then(Modifier.systemBarsPadding()),
         contentAlignment = Alignment.Center
     ) {
+        // Botão voltar no canto superior esquerdo
+        IconButton(
+            onClick  = onNavigateBack,
+            modifier = Modifier.align(Alignment.TopStart)
+        ) {
+            Icon(
+                imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Voltar",
+                tint               = SubtleText
+            )
+        }
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(horizontal = 24.dp)
@@ -108,7 +132,14 @@ fun CardScreen(
             AnimatedVisibility(visible = !state.isUnlocked) {
                 Button(
                     onClick = {
-                        onRequestBiometric { viewModel.onBiometricSuccess() }
+                        biometricInProgress.value = true
+                        onRequestBiometric(
+                            {
+                                biometricInProgress.value = false
+                                viewModel.onBiometricSuccess()
+                            },
+                            { biometricInProgress.value = false }
+                        )
                     },
                     modifier = Modifier
                         .width(280.dp)

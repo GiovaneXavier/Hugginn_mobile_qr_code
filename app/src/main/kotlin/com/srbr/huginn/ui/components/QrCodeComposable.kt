@@ -60,6 +60,7 @@ fun QrCode(
             transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
             label        = "qrRefresh"
         ) { currentToken ->
+            if (currentToken.isEmpty()) return@AnimatedContent
 
             val bitmap = remember(currentToken) {
                 generateQrBitmap(currentToken, pixelSize = 512)

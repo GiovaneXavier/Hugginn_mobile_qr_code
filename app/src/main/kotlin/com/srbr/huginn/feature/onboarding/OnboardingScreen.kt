@@ -1,5 +1,7 @@
 package com.srbr.huginn.feature.onboarding
 
+import androidx.camera.core.Preview as CameraPreview
+import androidx.camera.view.PreviewView
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -7,10 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.srbr.huginn.core.security.HuginnCard
@@ -20,7 +24,7 @@ import com.srbr.huginn.ui.theme.*
 @Composable
 fun OnboardingScreen(
     onRegistered:    (systemId: String) -> Unit,
-    onRequestCamera: (onQRDetected: (String) -> Unit, onPermissionDenied: () -> Unit, onUnavailable: () -> Unit) -> Unit,
+    onRequestCamera: (surfaceProvider: CameraPreview.SurfaceProvider, onQRDetected: (String) -> Unit, onPermissionDenied: () -> Unit, onUnavailable: () -> Unit) -> Unit,
     onStopCamera:    () -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel()
 ) {
@@ -49,17 +53,18 @@ fun OnboardingScreen(
         ) { step ->
             when (step) {
                 is OnboardingStep.Welcome    -> WelcomeStep(
-                    onStartScan = {
-                        viewModel.onStartScan()
+                    onStartScan = { viewModel.onStartScan() }
+                )
+                is OnboardingStep.Scanning   -> ScanningStep(
+                    onCancel = { onStopCamera(); viewModel.onCancelScan() },
+                    onCameraReady = { sp ->
                         onRequestCamera(
+                            sp,
                             { qr -> viewModel.onQRDetected(qr) },
                             { viewModel.onCameraPermissionDenied() },
                             { viewModel.onCameraUnavailable() }
                         )
                     }
-                )
-                is OnboardingStep.Scanning   -> ScanningStep(
-                    onCancel = { onStopCamera(); viewModel.onCancelScan() }
                 )
                 is OnboardingStep.Validating -> ValidatingStep(
                     status = state.validatingStatus,
@@ -110,20 +115,38 @@ private fun WelcomeStep(onStartScan: () -> Unit) {
 }
 
 @Composable
-private fun ScanningStep(onCancel: () -> Unit) {
+private fun ScanningStep(
+    onCancel: () -> Unit,
+    onCameraReady: (CameraPreview.SurfaceProvider) -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(36.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
     ) {
-        Text("📷", fontSize = 64.sp)
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        AndroidView(
+            factory = { ctx ->
+                PreviewView(ctx).apply {
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                    onCameraReady(surfaceProvider)
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(3f / 4f)
+                .clip(RoundedCornerShape(16.dp))
+        )
+        Spacer(modifier = Modifier.height(20.dp))
         Text("Aponte para o QR de cadastro",
             fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(8.dp))
-        Text("A câmera abrirá automaticamente",
+        Text("Mantenha o QR centralizado na tela",
             fontSize = 13.sp, color = SubtleText, textAlign = TextAlign.Center)
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         TextButton(onClick = onCancel) {
             Text("CANCELAR", color = SubtleText, letterSpacing = 1.sp)
         }

@@ -48,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private var onQRResult: ((String) -> Unit)? = null
     private var onCameraPermissionDenied: (() -> Unit)? = null
     private var onCameraUnavailable: (() -> Unit)? = null
+    private var cameraSurfaceProvider: androidx.camera.core.Preview.SurfaceProvider? = null
     private var isAnalyzing = false
     private var activeCameraProvider: ProcessCameraProvider? = null
 
@@ -85,8 +86,9 @@ class MainActivity : AppCompatActivity() {
                     if (dest != null) {
                         HuginnNavGraph(
                             startDestination   = dest,
-                            onRequestBiometric = ::requestBiometric,
-                            onRequestCamera    = { onQR, onDenied, onUnavailable ->
+                            onRequestBiometric = { onSuccess, onDismiss -> requestBiometric(onSuccess, onDismiss) },
+                            onRequestCamera    = { sp, onQR, onDenied, onUnavailable ->
+                                cameraSurfaceProvider = sp
                                 onQRResult = onQR
                                 onCameraPermissionDenied = onDenied
                                 onCameraUnavailable = onUnavailable
@@ -100,7 +102,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestBiometric(onSuccess: () -> Unit) {
+    private fun requestBiometric(onSuccess: () -> Unit, onDismiss: () -> Unit) {
         var failCount = 0
         val executor = ContextCompat.getMainExecutor(this)
         lateinit var prompt: BiometricPrompt
@@ -109,10 +111,15 @@ class MainActivity : AppCompatActivity() {
                 super.onAuthenticationSucceeded(result)
                 onSuccess()
             }
-            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {}
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                onDismiss()
+            }
             override fun onAuthenticationFailed() {
                 failCount++
-                if (failCount >= 3) prompt.cancelAuthentication()
+                if (failCount >= 3) {
+                    prompt.cancelAuthentication()
+                    onDismiss()
+                }
             }
         }
         prompt = BiometricPrompt(this, executor, callback)
@@ -151,6 +158,9 @@ class MainActivity : AppCompatActivity() {
                 BarcodeScannerOptions.Builder()
                     .setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
             )
+            val preview = androidx.camera.core.Preview.Builder().build().also { p ->
+                p.setSurfaceProvider(cameraSurfaceProvider)
+            }
             val analysis = ImageAnalysis.Builder()
                 .setTargetResolution(Size(1280, 720))
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -176,7 +186,7 @@ class MainActivity : AppCompatActivity() {
                 }
             try {
                 provider.unbindAll()
-                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, analysis)
+                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
             } catch (e: Exception) {
                 Log.e("MainActivity", "Camera bind failed: ${e.message}")
                 activeCameraProvider = null

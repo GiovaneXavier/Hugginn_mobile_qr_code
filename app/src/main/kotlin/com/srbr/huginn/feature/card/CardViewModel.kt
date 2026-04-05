@@ -8,6 +8,7 @@ import com.srbr.huginn.core.security.HuginnCard
 import com.srbr.huginn.core.security.QrTokenGenerator
 import com.srbr.huginn.core.storage.CardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class CardUiState(
@@ -44,17 +46,22 @@ class CardViewModel @Inject constructor(
     private val AUTH_WINDOW_SECS = 30
     private val QR_REFRESH_SECS  = 10  // renova o QR a cada 10s
 
-    init { loadCard() }
+    init {
+        // EncryptedSharedPreferences não deve bloquear a main thread —
+        // carrega no IO e atualiza o state quando pronto.
+        viewModelScope.launch { loadCard() }
+    }
 
-    private fun loadCard() {
-        val systemId = savedStateHandle.get<String>("systemId") ?: return
-        val card = repository.getCard(systemId)
-        _state.update {
-            it.copy(
-                card      = card,
-                displayId = deviceIdentity.getDisplayId(),
-                hasCard   = card != null
-            )
+    private suspend fun loadCard() = withContext(Dispatchers.IO) {
+        val systemId = savedStateHandle.get<String>("systemId")
+        // Tenta pelo systemId da rota; se não encontrar (ex: diferença de encoding
+        // entre startDestination e navigate()), usa o primeiro cartão disponível.
+        val card = systemId?.let { repository.getCard(it) }
+            ?: repository.getCards().firstOrNull()
+        if (card != null) {
+            _state.update {
+                it.copy(card = card, displayId = deviceIdentity.getDisplayId(), hasCard = true)
+            }
         }
     }
 
@@ -63,25 +70,33 @@ class CardViewModel @Inject constructor(
      * Gera o primeiro QR e inicia os loops de countdown e refresh.
      */
     fun onBiometricSuccess() {
-        if (_state.value.card == null) loadCard()
-        val card = _state.value.card ?: return
-        val token = qrTokenGenerator.generate(card, deviceIdentity.getDeviceId())
-        _state.update {
-            it.copy(
-                isUnlocked   = true,
-                countdown    = AUTH_WINDOW_SECS,
-                countdownPct = 1f,
-                qrToken      = token
-            )
+        viewModelScope.launch {
+            // Garante que o cartão está carregado antes de gerar o token
+            // (necessário em processo fresco onde loadCard() é assíncrono)
+            if (_state.value.card == null) loadCard()
+            val card = _state.value.card ?: return@launch
+            val token = withContext(Dispatchers.Default) {
+                qrTokenGenerator.generate(card, deviceIdentity.getDeviceId())
+            }
+            _state.update {
+                it.copy(
+                    isUnlocked   = true,
+                    countdown    = AUTH_WINDOW_SECS,
+                    countdownPct = 1f,
+                    qrToken      = token
+                )
+            }
+            startCountdown()
+            startQrRefresh()
         }
-        startCountdown()
-        startQrRefresh()
     }
 
     /** Gera um novo token assinado e atualiza o estado (novo QR exibido). */
-    private fun refreshQrToken() {
+    private suspend fun refreshQrToken() {
         val card = _state.value.card ?: return
-        val token = qrTokenGenerator.generate(card, deviceIdentity.getDeviceId())
+        val token = withContext(Dispatchers.Default) {
+            qrTokenGenerator.generate(card, deviceIdentity.getDeviceId())
+        }
         _state.update { it.copy(qrToken = token) }
     }
 
@@ -99,19 +114,17 @@ class CardViewModel @Inject constructor(
     private fun startCountdown() {
         countdownJob?.cancel()
         countdownJob = viewModelScope.launch {
-            for (remaining in AUTH_WINDOW_SECS downTo 0) {
+            for (remaining in AUTH_WINDOW_SECS downTo 1) {
                 _state.update {
                     it.copy(
                         countdown    = remaining,
                         countdownPct = remaining.toFloat() / AUTH_WINDOW_SECS
                     )
                 }
-                if (remaining == 0) {
-                    onExpire()
-                    return@launch
-                }
                 delay(1000)
             }
+            qrRefreshJob?.cancel()
+            _state.update { it.copy(isUnlocked = false, countdown = 0, countdownPct = 0f, qrToken = "") }
         }
     }
 
