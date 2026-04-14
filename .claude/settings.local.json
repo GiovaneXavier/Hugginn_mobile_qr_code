@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew testDebugUnitTest)",
+      "Bash(JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\" ./gradlew testDebugUnitTest)",
+      "Bash(JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\" PATH=\"$JAVA_HOME/bin:$PATH\" java -version)",
+      "Bash(cmd.exe /c \"C:\\\\Projetos\\\\Projetos\\\\Hugginn_mobile_qr_code\\\\gradlew.bat testDebugUnitTest\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Projetos\\\\Projetos\\\\Hugginn_mobile_qr_code && gradlew.bat testDebugUnitTest 2>&1\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Projetos\\\\Projetos\\\\Hugginn_mobile_qr_code && gradlew.bat testDebugUnitTest\")",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\\\\bin\\\\' -Filter '*.exe' | Select-Object -ExpandProperty Name\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'C:\\\\Program Files\\\\Java' -ErrorAction SilentlyContinue; Get-ChildItem 'C:\\\\Program Files\\\\Eclipse Adoptium' -ErrorAction SilentlyContinue; Get-ChildItem 'C:\\\\Program Files\\\\Microsoft' -Filter '*jdk*' -ErrorAction SilentlyContinue\")",
+      "Bash(powershell.exe -Command \"Get-Command java -ErrorAction SilentlyContinue; [System.Environment]::GetEnvironmentVariable\\('JAVA_HOME', 'User'\\); [System.Environment]::GetEnvironmentVariable\\('JAVA_HOME', 'Machine'\\)\")"
+    ]
+  }
+}
