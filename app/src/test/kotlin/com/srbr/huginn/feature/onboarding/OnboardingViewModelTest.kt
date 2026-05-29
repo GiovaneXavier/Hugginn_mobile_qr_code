@@ -2,10 +2,10 @@ package com.srbr.huginn.feature.onboarding
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
-import com.srbr.huginn.core.security.DeviceIdentity
-import com.srbr.huginn.core.security.HuginnCard
-import com.srbr.huginn.core.security.QRValidator
-import com.srbr.huginn.core.storage.CardRepository
+import com.srbr.huginn.credential.security.DeviceIdentity
+import com.srbr.huginn.credential.security.HuginnCard
+import com.srbr.huginn.credential.security.QRValidator
+import com.srbr.huginn.credential.storage.CardRepository
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

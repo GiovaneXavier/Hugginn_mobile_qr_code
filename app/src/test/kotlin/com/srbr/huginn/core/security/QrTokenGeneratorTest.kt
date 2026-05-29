@@ -1,5 +1,7 @@
 package com.srbr.huginn.core.security
 
+import com.srbr.huginn.credential.security.HuginnCard
+import com.srbr.huginn.credential.security.NonceGenerator
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -22,7 +24,7 @@ class QrTokenGeneratorTest {
     private val deviceId = "SRBR-ABCD-1234"
 
     @Test fun `generate produces correct token format`() {
-        val generator = QrTokenGenerator(testKey)
+        val generator = QrTokenGenerator(testKey, NonceGenerator())
         val token = generator.generate(fakeCard, deviceId)
 
         // Formato: deviceId|empId|sysId|ts|nonce.signature
@@ -37,7 +39,7 @@ class QrTokenGeneratorTest {
     }
 
     @Test fun `generate signature is 43 chars (SHA-256 base64url no padding)`() {
-        val generator = QrTokenGenerator(testKey)
+        val generator = QrTokenGenerator(testKey, NonceGenerator())
         val token = generator.generate(fakeCard, deviceId)
         val sig = token.substringAfterLast('.')
         assertEquals(43, sig.length)
@@ -47,14 +49,14 @@ class QrTokenGeneratorTest {
     }
 
     @Test fun `generate produces different tokens on each call (unique nonce)`() {
-        val generator = QrTokenGenerator(testKey)
+        val generator = QrTokenGenerator(testKey, NonceGenerator())
         val t1 = generator.generate(fakeCard, deviceId)
         val t2 = generator.generate(fakeCard, deviceId)
         assertNotEquals("Each token must be unique due to nonce", t1, t2)
     }
 
     @Test fun `generate timestamp is close to current time`() {
-        val generator = QrTokenGenerator(testKey)
+        val generator = QrTokenGenerator(testKey, NonceGenerator())
         val before = System.currentTimeMillis() / 1000L
         val token  = generator.generate(fakeCard, deviceId)
         val after  = System.currentTimeMillis() / 1000L
@@ -65,8 +67,8 @@ class QrTokenGeneratorTest {
     }
 
     @Test fun `generate uses different key than wrong key`() {
-        val correctGen = QrTokenGenerator(testKey)
-        val wrongGen   = QrTokenGenerator("WRONG_KEY")
+        val correctGen = QrTokenGenerator(testKey, NonceGenerator())
+        val wrongGen   = QrTokenGenerator("WRONG_KEY", NonceGenerator())
         val token      = correctGen.generate(fakeCard, deviceId)
 
         // Signature from wrong key should differ
@@ -84,7 +86,7 @@ class QrTokenGeneratorTest {
     // ── Vetor cross-platform (Q41 equivalente para o app QR) ─────────────────
 
     @Test fun `token signature has correct Base64Url-no-padding format`() {
-        val generator = QrTokenGenerator(testKey)
+        val generator = QrTokenGenerator(testKey, NonceGenerator())
         repeat(20) {
             val sig = generator.generate(fakeCard, deviceId).substringAfterLast('.')
             assertFalse(sig.contains('='))

@@ -1,5 +1,6 @@
 package com.srbr.huginn.core.security
 
+import com.srbr.huginn.credential.security.QRValidator
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Before

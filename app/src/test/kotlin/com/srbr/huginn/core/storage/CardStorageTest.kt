@@ -3,7 +3,8 @@ package com.srbr.huginn.core.storage
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.test.core.app.ApplicationProvider
-import com.srbr.huginn.core.security.HuginnCard
+import com.srbr.huginn.credential.security.HuginnCard
+import com.srbr.huginn.credential.storage.CardStorage
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
