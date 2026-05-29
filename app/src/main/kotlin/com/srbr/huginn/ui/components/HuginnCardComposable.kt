@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.srbr.huginn.core.security.HuginnCard
+import com.srbr.huginn.credential.security.HuginnCard
 import com.srbr.huginn.ui.theme.*
 import kotlinx.coroutines.launch
 

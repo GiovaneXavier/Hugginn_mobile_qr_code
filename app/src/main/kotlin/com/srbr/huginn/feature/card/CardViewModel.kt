@@ -3,11 +3,12 @@ package com.srbr.huginn.feature.card
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.srbr.huginn.core.security.DeviceIdentity
-import com.srbr.huginn.core.security.HuginnCard
+import com.srbr.huginn.credential.security.DeviceIdentity
+import com.srbr.huginn.credential.security.HuginnCard
 import com.srbr.huginn.core.security.QrTokenGenerator
-import com.srbr.huginn.core.storage.CardRepository
+import com.srbr.huginn.credential.storage.CardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,12 +32,22 @@ data class CardUiState(
 )
 
 @HiltViewModel
-class CardViewModel @Inject constructor(
+class CardViewModel(
     private val repository:       CardRepository,
     private val deviceIdentity:   DeviceIdentity,
     private val qrTokenGenerator: QrTokenGenerator,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
+    private val computeDispatcher: CoroutineDispatcher
 ) : ViewModel() {
+
+    // Construtor usado pelo Hilt; injeta o dispatcher real de produção.
+    // O construtor primário recebe um dispatcher controlável para testes determinísticos.
+    @Inject constructor(
+        repository:       CardRepository,
+        deviceIdentity:   DeviceIdentity,
+        qrTokenGenerator: QrTokenGenerator,
+        savedStateHandle: SavedStateHandle
+    ) : this(repository, deviceIdentity, qrTokenGenerator, savedStateHandle, Dispatchers.Default)
 
     private val _state = MutableStateFlow(CardUiState())
     val state: StateFlow<CardUiState> = _state.asStateFlow()
@@ -79,7 +90,7 @@ class CardViewModel @Inject constructor(
             // (necessário em processo fresco onde loadCard() é assíncrono)
             if (_state.value.card == null) loadCard()
             val card = _state.value.card ?: return@launch
-            val token = withContext(Dispatchers.Default) {
+            val token = withContext(computeDispatcher) {
                 qrTokenGenerator.generate(card, deviceIdentity.getDeviceId())
             }
             _state.update {
@@ -98,7 +109,7 @@ class CardViewModel @Inject constructor(
     /** Gera um novo token assinado e atualiza o estado (novo QR exibido). */
     private suspend fun refreshQrToken() {
         val card = _state.value.card ?: return
-        val token = withContext(Dispatchers.Default) {
+        val token = withContext(computeDispatcher) {
             qrTokenGenerator.generate(card, deviceIdentity.getDeviceId())
         }
         _state.update { it.copy(qrToken = token) }

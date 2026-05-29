@@ -1,9 +1,9 @@
 package com.srbr.huginn.core.security
 
-import java.security.SecureRandom
-import java.util.Base64
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
+import com.srbr.huginn.credential.security.HmacUtils
+import com.srbr.huginn.credential.security.HuginnCard
+import com.srbr.huginn.credential.security.NonceGenerator
+import com.srbr.huginn.credential.security.TokenPayload
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
@@ -11,36 +11,30 @@ import javax.inject.Singleton
 /**
  * Gera tokens assinados com HMAC-SHA256 para exibição via QR Code.
  *
- * O formato do token é idêntico ao utilizado pelo HCE no app NFC:
- *   deviceId|employeeId|systemId|timestamp|nonce.assinatura
+ * Formato idêntico ao [NfcTokenGenerator] do app NFC:
  *
- * Isso garante que o backend Heimdall valide tokens NFC e QR
- * com exatamente a mesma lógica, sem alteração no servidor.
+ *     deviceId|employeeId|systemId|timestamp|nonce.assinatura
  *
- * Injetado via Hilt — tokenHmacKey fornecido pelo AppModule.
+ * A montagem do payload, a geração do nonce e a assinatura HMAC vêm do módulo
+ * `:core-credential` ([TokenPayload], [NonceGenerator], [HmacUtils]) — qualquer
+ * mudança no contrato passa a ser feita num só lugar para os dois apps.
  */
 @Singleton
 class QrTokenGenerator @Inject constructor(
-    @Named("tokenHmacKey") private val hmacKey: String
+    @Named("tokenHmacKey") private val hmacKey: String,
+    private val nonceGenerator: NonceGenerator
 ) {
 
-    /**
-     * Gera um novo token assinado com timestamp e nonce atual.
-     * Cada chamada produz um token diferente (novo timestamp + nonce).
-     *
-     * @param card     cartão do funcionário registrado
-     * @param deviceId ID do dispositivo (SHA-256 do Android ID)
-     * @return token no formato "deviceId|empId|sysId|ts|nonce.sig"
-     */
     fun generate(card: HuginnCard, deviceId: String): String {
-        val ts    = System.currentTimeMillis() / 1000L
-        val nonce = SecureRandom().nextLong() and 0xFFFFFFL
-        val data  = "$deviceId|${card.employeeId}|${card.systemId}|$ts|$nonce"
-
-        val mac = Mac.getInstance("HmacSHA256")
-        mac.init(SecretKeySpec(hmacKey.toByteArray(Charsets.UTF_8), "HmacSHA256"))
-        val sig = Base64.getUrlEncoder().withoutPadding()
-            .encodeToString(mac.doFinal(data.toByteArray(Charsets.UTF_8)))
-        return "$data.$sig"
+        val payload = TokenPayload(
+            deviceId     = deviceId,
+            employeeId   = card.employeeId,
+            systemId     = card.systemId,
+            timestampSec = System.currentTimeMillis() / 1000L,
+            nonce        = nonceGenerator.generate()
+        )
+        val canonical = payload.canonical()
+        val signature = HmacUtils.sign(canonical, hmacKey)
+        return "$canonical.$signature"
     }
 }

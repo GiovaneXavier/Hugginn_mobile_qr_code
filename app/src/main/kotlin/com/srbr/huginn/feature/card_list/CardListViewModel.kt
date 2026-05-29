@@ -1,8 +1,8 @@
 package com.srbr.huginn.feature.card_list
 
 import androidx.lifecycle.ViewModel
-import com.srbr.huginn.core.security.HuginnCard
-import com.srbr.huginn.core.storage.CardRepository
+import com.srbr.huginn.credential.security.HuginnCard
+import com.srbr.huginn.credential.storage.CardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

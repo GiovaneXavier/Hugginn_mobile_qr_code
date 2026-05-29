@@ -64,6 +64,9 @@ android {
 }
 
 dependencies {
+    // ── Shared module: domínio + storage de credencial (HuginnCard, QRValidator, CardStorage, etc.) ──
+    implementation 'com.srbr.huginn:credential:0.2.2-SNAPSHOT'
+
     // ── Core ──
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'

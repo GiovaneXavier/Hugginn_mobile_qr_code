@@ -3,10 +3,10 @@ package com.srbr.huginn.feature.onboarding
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.srbr.huginn.core.security.DeviceIdentity
-import com.srbr.huginn.core.security.HuginnCard
-import com.srbr.huginn.core.security.QRValidator
-import com.srbr.huginn.core.storage.CardRepository
+import com.srbr.huginn.credential.security.DeviceIdentity
+import com.srbr.huginn.credential.security.HuginnCard
+import com.srbr.huginn.credential.security.QRValidator
+import com.srbr.huginn.credential.storage.CardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

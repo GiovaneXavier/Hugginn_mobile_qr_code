@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.srbr.huginn.core.security.HuginnCard
+import com.srbr.huginn.credential.security.HuginnCard
 import com.srbr.huginn.ui.components.HuginnCard
 import com.srbr.huginn.ui.theme.*
 
