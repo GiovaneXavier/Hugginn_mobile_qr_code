@@ -11,7 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.srbr.huginn.feature.card.CardScreen
 import com.srbr.huginn.feature.card_list.CardListScreen
-import com.srbr.huginn.feature.onboarding.OnboardingScreen
+import com.srbr.huginn.credential.onboarding.OnboardingScreen
 
 object Routes {
     const val ONBOARDING = "onboarding"
@@ -36,8 +36,9 @@ fun HuginnNavGraph(
     ) {
         composable(Routes.ONBOARDING) {
             OnboardingScreen(
-                onRegistered = { systemId ->
-                    navController.navigate(Routes.card(systemId)) {
+                onRegistered = { systemId, totalCards ->
+                    val destination = if (totalCards > 1) Routes.CARD_LIST else Routes.card(systemId)
+                    navController.navigate(destination) {
                         popUpTo(Routes.ONBOARDING) { inclusive = true }
                     }
                 },

@@ -29,8 +29,8 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.srbr.huginn.credential.storage.CardRepository
-import com.srbr.huginn.ui.theme.DarkBackground
-import com.srbr.huginn.ui.theme.HuginnTheme
+import com.srbr.huginn.credential.ui.theme.DarkBackground
+import com.srbr.huginn.credential.ui.theme.HuginnTheme
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
