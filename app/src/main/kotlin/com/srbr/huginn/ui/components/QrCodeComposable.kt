@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
-import com.srbr.huginn.ui.theme.DarkSurface
-import com.srbr.huginn.ui.theme.SubtleText
+import com.srbr.huginn.credential.ui.theme.DarkSurface
+import com.srbr.huginn.credential.ui.theme.SubtleText
 
 private val QR_BACKGROUND = DarkSurface
 private val QR_FOREGROUND = Color.White

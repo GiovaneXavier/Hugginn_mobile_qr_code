@@ -6,6 +6,37 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+// ── Resolução de segredos HMAC ──
+// Lê a chave de uma Gradle property (local.properties / gradle.properties / -P) ou de uma
+// variável de ambiente. Em builds RELEASE a ausência da chave ABORTA o build (sem fallback).
+// Em builds debug, usa um valor de dev explicitamente falso, nunca apto a produção.
+def isReleaseBuild = gradle.startParameter.taskNames*.toLowerCase().any { name ->
+    name.contains('release') ||
+    name == 'build'    || name.endsWith(':build') ||
+    name == 'assemble' || name.endsWith(':assemble') ||
+    name == 'bundle'   || name.endsWith(':bundle')
+}
+
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream { localProps.load(it) }
+}
+
+def hmacSecret = { String propName ->
+    // Precedência: -P / gradle.properties  >  local.properties  >  variável de ambiente.
+    def value = project.findProperty(propName) ?: localProps.getProperty(propName) ?: System.getenv(propName)
+    if (value == null || value.toString().trim().isEmpty()) {
+        if (isReleaseBuild) {
+            throw new GradleException(
+                "Build release abortado: a chave '${propName}' nao foi encontrada. " +
+                "Defina-a em local.properties ou como variavel de ambiente antes de gerar o release.")
+        }
+        return "DEV_ONLY_FALLBACK_NEVER_RELEASE"
+    }
+    return value.toString()
+}
+
 android {
     namespace 'com.srbr.huginn'
     compileSdk 34
@@ -19,14 +50,10 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        // ── Secrets injected at build time — never hardcode in source ──
-        // Set these in local.properties or CI/CD environment variables:
-        //   HUGINN_QR_HMAC_KEY=your_secret
-        //   HUGINN_TOKEN_HMAC_KEY=your_secret
-        buildConfigField "String", "QR_HMAC_KEY",
-            "\"${project.findProperty('HUGINN_QR_HMAC_KEY') ?: 'SRBR_HUGINN_ODIN_SECRET_2024'}\""
-        buildConfigField "String", "TOKEN_HMAC_KEY",
-            "\"${project.findProperty('HUGINN_TOKEN_HMAC_KEY') ?: 'SRBR_HEIMDALL_TOKEN_SECRET_2024'}\""
+        // Segredos injetados em tempo de build — nunca hardcoded em código nem como fallback de release.
+        // Defina em local.properties (HUGINN_QR_HMAC_KEY / HUGINN_TOKEN_HMAC_KEY) ou via variável de ambiente.
+        buildConfigField "String", "QR_HMAC_KEY",    "\"${hmacSecret('HUGINN_QR_HMAC_KEY')}\""
+        buildConfigField "String", "TOKEN_HMAC_KEY", "\"${hmacSecret('HUGINN_TOKEN_HMAC_KEY')}\""
     }
 
     buildFeatures {
@@ -65,7 +92,7 @@ android {
 
 dependencies {
     // ── Shared module: domínio + storage de credencial (HuginnCard, QRValidator, CardStorage, etc.) ──
-    implementation 'com.srbr.huginn:credential:0.2.2-SNAPSHOT'
+    implementation 'com.srbr.huginn:credential:0.3.0-SNAPSHOT'
 
     // ── Core ──
     implementation 'androidx.core:core-ktx:1.12.0'
